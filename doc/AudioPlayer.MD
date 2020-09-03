@@ -3,7 +3,7 @@
 ##### 如何使用
 
 ```
-  private void initBgMusicPlayer() {
+  private void initPlayer() {
         if (backgroundPlayer == null) {
             backgroundPlayer = new AudioPlayer();
         }
@@ -34,7 +34,7 @@
 fun AudioPlayer.setSeekBar(seekBar: SeekBar?)  
 /**
  * 播放和暂停相互切换
- * 如果切换了URL,会先执行上一个[PlayerListener.onCompletion]
+ * 如果切换了URL,会自动先执行上一个[PlayerListener.onCompletion]
  */
 fun AudioPlayer.playOrPause(url:String,
                             onStart:(url: String, duration: Int)->Unit = { _: String, _: Int ->},

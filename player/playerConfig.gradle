@@ -3,9 +3,9 @@ ext.bintrayConfig = [
         groupName : 'me.shetj.sdk',
         versionName : '0.0.1',
 
-        siteUrl : 'https://github.com/SheTieJun/Base',
-        gitUrl : 'https://github.com/SheTieJun/Base.git',
-        issueUrl : 'https://github.com/SheTieJun/Base/issues',
+        siteUrl : 'https://github.com/SheTieJun/audioplayer',
+        gitUrl : 'https://github.com/SheTieJun/audioplayer.git',
+        issueUrl : 'https://github.com/SheTieJun/audioplayer/issues',
 
         developerId : 'shetiejun',
         developerName : 'shetj',
