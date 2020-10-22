@@ -7,6 +7,7 @@ import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.AudioManager.OnAudioFocusChangeListener
 import android.media.MediaPlayer
+import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -43,6 +44,7 @@ class AudioPlayer : MediaPlayer.OnPreparedListener, MediaPlayer.OnErrorListener,
 
     private var mediaPlayer: MediaPlayer? = null
     private var mAudioManager: AudioManager? = null
+    private var context: Context? = null
 
     private var focusChangeListener =
         OnAudioFocusChangeListener { focusChange ->
@@ -75,8 +77,13 @@ class AudioPlayer : MediaPlayer.OnPreparedListener, MediaPlayer.OnErrorListener,
      * 获取当前播放的url
      * @return currentUrl
      */
-    var currentUrl = ""
+    var currentUrl :String ?= null
         private set
+
+    var currentUri: Uri? = null
+        private set
+
+    private var header: MutableMap<String, String>? = null
 
     /**
      * [AudioPlayer.onPrepared] and [AudioPlayer.onSeekComplete]
@@ -110,7 +117,7 @@ class AudioPlayer : MediaPlayer.OnPreparedListener, MediaPlayer.OnErrorListener,
                 }
                 HANDLER_START -> {
                     if (listener != null && mediaPlayer != null) {
-                        listener!!.onStart(currentUrl, mediaPlayer!!.duration)
+                        listener!!.onStart(mediaPlayer!!.duration)
                     }
                     if (mAudioManager != null) {
                         requestAudioFocus()
@@ -224,6 +231,26 @@ class AudioPlayer : MediaPlayer.OnPreparedListener, MediaPlayer.OnErrorListener,
         }
     }
 
+    fun playOrPause(context: Context, uri: Uri?, header: MutableMap<String, String>?, listener: PlayerListener?) {
+        //判断是否是当前播放的url
+        if (uri == currentUri && mediaPlayer != null) {
+            if (listener != null) {
+                this.listener = listener
+            }
+            if (mediaPlayer!!.isPlaying) {
+                pause()
+            } else {
+                resume()
+            }
+        } else {
+            pause() //先停下来，有些手机会报文件结束异常的错误
+            //先让当前url回调结束
+            this.listener?.onCompletion()
+            //直接播放
+            play(context, uri, header, listener)
+        }
+    }
+
     /**
      * 只有在【不播放】的时候设置起效
      * 如果是【播放中】，请使用 [seekTo]
@@ -261,6 +288,26 @@ class AudioPlayer : MediaPlayer.OnPreparedListener, MediaPlayer.OnErrorListener,
         }
     }
 
+    private fun play(
+        context: Context,
+        uri: Uri?,
+        header: MutableMap<String, String>? = null,
+        listener: PlayerListener? = null
+    ) {
+
+        if (uri == null) {
+            listener?.onError(Exception("uri can not be null"))
+        }
+        uri?.let {
+            this.listener = listener
+            currentUri = uri
+            this.context = context
+            this.header = header
+            initMedia()
+            configMediaPlayer()
+        }
+    }
+
     /**
      * 设置 但是 【不播放】
      * 作用：用来记录还没开始播放，就拖动了【注意是为了列表播放】
@@ -281,13 +328,33 @@ class AudioPlayer : MediaPlayer.OnPreparedListener, MediaPlayer.OnErrorListener,
         }
     }
 
+    fun playNoStart(
+        context: Context,
+        uri: Uri?,
+        header: MutableMap<String, String>? = null,
+        listener: PlayerListener? = null
+    ) {
+        if (uri == null) {
+            listener?.onError(Exception("uri can not be null"))
+        }
+        uri?.let {
+            this.listener = listener
+            setIsPlay(false)
+            currentUri = uri
+            this.context = context
+            this.header = header
+            initMedia()
+            configMediaPlayer()
+        }
+    }
+
 
     /**
      * 暂停，并且停止计时
      */
     fun pause() {
         if (mediaPlayer != null && mediaPlayer!!.isPlaying
-            && !TextUtils.isEmpty(currentUrl)
+            && (!TextUtils.isEmpty(currentUrl)||currentUri != null)
         ) {
             stopProgress()
             mediaPlayer!!.pause()
@@ -299,7 +366,7 @@ class AudioPlayer : MediaPlayer.OnPreparedListener, MediaPlayer.OnErrorListener,
      * 恢复，并且开始计时
      */
     fun resume() {
-        if (isPause && !TextUtils.isEmpty(currentUrl)) {
+        if (isPause && (!TextUtils.isEmpty(currentUrl)||currentUri != null)) {
             mediaPlayer!!.start()
             if (seekToPlay != 0) {
                 mediaPlayer!!.seekTo(seekToPlay)
@@ -328,7 +395,7 @@ class AudioPlayer : MediaPlayer.OnPreparedListener, MediaPlayer.OnErrorListener,
      * 外部设置进度变化
      */
     fun seekTo(seekTo: Int) {
-        if (mediaPlayer != null && !TextUtils.isEmpty(currentUrl)) {
+        if (mediaPlayer != null && (!TextUtils.isEmpty(currentUrl)||currentUri != null)) {
             setIsPlay(!isPause)
             mediaPlayer!!.start()
             mediaPlayer!!.seekTo(seekTo)
@@ -372,7 +439,11 @@ class AudioPlayer : MediaPlayer.OnPreparedListener, MediaPlayer.OnErrorListener,
     private fun configMediaPlayer() {
         try {
             mediaPlayer!!.reset()
-            mediaPlayer!!.setDataSource(currentUrl)
+            if (currentUrl != null) {
+                mediaPlayer!!.setDataSource(currentUrl)
+            } else if (currentUri != null && context != null) {
+                mediaPlayer!!.setDataSource(context!!, currentUri!!, header)
+            }
             mediaPlayer!!.prepareAsync()
             mediaPlayer!!.setOnPreparedListener(this)
             mediaPlayer!!.setOnErrorListener(this)
@@ -388,7 +459,8 @@ class AudioPlayer : MediaPlayer.OnPreparedListener, MediaPlayer.OnErrorListener,
      * 清空播放信息
      */
     private fun release() {
-        currentUrl = ""
+        currentUrl = null
+        currentUri = null
         //释放MediaPlay
         if (null != mediaPlayer) {
             mediaPlayer!!.release()

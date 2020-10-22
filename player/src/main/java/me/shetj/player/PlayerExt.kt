@@ -9,7 +9,7 @@ import android.widget.SeekBar
  */
 fun AudioPlayer.playNoStart(
     url: String,
-    onStart: (url: String, duration: Int) -> Unit = { _: String, _: Int -> },
+    onStart: (duration: Int) -> Unit = {_: Int -> },
     onPause: () -> Unit = {},
     onResume: () -> Unit = {},
     onStop: () -> Unit = {},
@@ -19,8 +19,8 @@ fun AudioPlayer.playNoStart(
 ): AudioPlayer {
 
     playNoStart(url, object : PlayerListener {
-        override fun onStart(url: String, duration: Int) {
-            onStart(url, duration)
+        override fun onStart(duration: Int) {
+            onStart(duration)
         }
 
         override fun onPause() {
@@ -56,7 +56,7 @@ fun AudioPlayer.playNoStart(
  */
 fun AudioPlayer.playOrPause(
     url: String,
-    onStart: (url: String, duration: Int) -> Unit = { _: String, _: Int -> },
+    onStart: ( duration: Int) -> Unit = {  _: Int -> },
     onPause: () -> Unit = {},
     onResume: () -> Unit = {},
     onStop: () -> Unit = {},
@@ -66,8 +66,8 @@ fun AudioPlayer.playOrPause(
 ): AudioPlayer {
 
     playOrPause(url, object : PlayerListener {
-        override fun onStart(url: String, duration: Int) {
-            onStart(url, duration)
+        override fun onStart(duration: Int) {
+            onStart(duration)
         }
 
         override fun onPause() {
@@ -120,7 +120,7 @@ fun AudioPlayer.setSeekBar(seekBar: SeekBar?) {
  * 如果需要替换全部 [AudioPlayer.updateListener(listener: PlayerListener)]
  */
 fun AudioPlayer.updateListener(
-    onStart: (url: String, duration: Int) -> Unit = { _: String, _: Int -> },
+    onStart: (duration: Int) -> Unit = { _: Int -> },
     onPause: () -> Unit = {},
     onResume: () -> Unit = {},
     onStop: () -> Unit = {},
@@ -129,8 +129,8 @@ fun AudioPlayer.updateListener(
     onProgress: (current: Int, duration: Int) -> Unit = { _: Int, _: Int -> }
 ): AudioPlayer {
     updateListener(object : PlayerListener {
-        override fun onStart(url: String, duration: Int) {
-            onStart(url, duration)
+        override fun onStart(duration: Int) {
+            onStart( duration)
         }
 
         override fun onPause() {

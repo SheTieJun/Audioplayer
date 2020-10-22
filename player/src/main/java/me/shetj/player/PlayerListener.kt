@@ -14,7 +14,7 @@ interface PlayerListener {
      * @param url 播放路径
      * @param duration 最大时间
      */
-    fun onStart(url: String, duration: Int)
+    fun onStart(duration: Int)
 
     /**
      * 暂停
