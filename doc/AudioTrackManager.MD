@@ -1,4 +1,5 @@
-# AudioTrackManager
+# AudioTrackManager :PCM文件播放
+暂时不支持进度显示
 
 ```java
  //必须初始化 
