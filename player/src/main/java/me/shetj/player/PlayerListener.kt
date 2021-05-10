@@ -10,6 +10,11 @@ package me.shetj.player
 interface PlayerListener {
 
     /**
+     * 加载中
+     */
+    fun onLoading()
+
+    /**
      * 开始播放
      * @param url 播放路径
      * @param duration 最大时间

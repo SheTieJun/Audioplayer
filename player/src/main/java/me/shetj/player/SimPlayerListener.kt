@@ -7,6 +7,8 @@ package me.shetj.player
  * **@describe**  <br></br>
  */
 open class SimPlayerListener : PlayerListener {
+    override fun onLoading() {
+    }
 
     override fun onStart(duration: Int) {
 

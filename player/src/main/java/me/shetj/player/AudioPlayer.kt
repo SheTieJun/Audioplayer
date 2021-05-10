@@ -33,14 +33,14 @@ import java.util.concurrent.atomic.AtomicBoolean
  ********** */
 class AudioPlayer : MediaPlayer.OnPreparedListener, MediaPlayer.OnErrorListener,
     MediaPlayer.OnCompletionListener, MediaPlayer.OnSeekCompleteListener {
-
-    private val HANDLER_PLAYING = 0x201 //正在录音
-    private val HANDLER_START = 0x202   //开始了
-    private val HANDLER_COMPLETE = 0x203//完成
-    private val HANDLER_ERROR = 0x205   //错误
-    private val HANDLER_PAUSE = 0x206   //暂停
-    private val HANDLER_RESUME = 0x208  //暂停后开始
-    private val HANDLER_RESET = 0x209   //重置
+    private val HANDLER_LOADING = 0x201 //正在录音
+    private val HANDLER_PLAYING = HANDLER_LOADING + 1 //正在录音
+    private val HANDLER_START = HANDLER_PLAYING + 1   //开始了
+    private val HANDLER_COMPLETE = HANDLER_START + 1//完成
+    private val HANDLER_ERROR = HANDLER_COMPLETE + 1   //错误
+    private val HANDLER_PAUSE = HANDLER_ERROR + 1   //暂停
+    private val HANDLER_RESUME = HANDLER_PAUSE + 1  //暂停后开始
+    private val HANDLER_RESET = HANDLER_RESUME + 1   //重置
 
     private var mediaPlayer: MediaPlayer? = null
     private var mAudioManager: AudioManager? = null
@@ -73,11 +73,13 @@ class AudioPlayer : MediaPlayer.OnPreparedListener, MediaPlayer.OnErrorListener,
      */
     private var listener: PlayerListener? = null
 
+    private var isLoading = false
+
     /**
      * 获取当前播放的url
      * @return currentUrl
      */
-    var currentUrl :String ?= null
+    var currentUrl: String? = null
         private set
 
     var currentUri: Uri? = null
@@ -135,6 +137,7 @@ class AudioPlayer : MediaPlayer.OnPreparedListener, MediaPlayer.OnErrorListener,
                 HANDLER_ERROR -> listener?.onError(msg.obj as Exception)
                 HANDLER_PAUSE -> listener?.onPause()
                 HANDLER_RESET -> listener?.onStop()
+                HANDLER_LOADING -> listener?.onLoading()
             }
         }
     }
@@ -155,8 +158,13 @@ class AudioPlayer : MediaPlayer.OnPreparedListener, MediaPlayer.OnErrorListener,
 
     val currentPosition: Int
         get() = if (mediaPlayer != null) {
-            mediaPlayer!!.duration
+            mediaPlayer!!.currentPosition
         } else 0
+
+    val duration:Int
+            = if (mediaPlayer != null) {
+        mediaPlayer!!.duration
+    } else 0
 
 
     constructor() {
@@ -217,13 +225,17 @@ class AudioPlayer : MediaPlayer.OnPreparedListener, MediaPlayer.OnErrorListener,
             if (listener != null) {
                 this.listener = listener
             }
+            if (isLoading) {
+                stopPlay()
+                return
+            }
             if (mediaPlayer!!.isPlaying) {
                 pause()
             } else {
                 resume()
             }
         } else {
-            pause() //先停下来，有些手机会报文件结束异常的错误
+            pause()
             //先让当前url回调结束
             this.listener?.onCompletion()
             //直接播放
@@ -231,11 +243,20 @@ class AudioPlayer : MediaPlayer.OnPreparedListener, MediaPlayer.OnErrorListener,
         }
     }
 
-    fun playOrPause(context: Context, uri: Uri?, header: MutableMap<String, String>?, listener: PlayerListener?) {
+    fun playOrPause(
+        context: Context,
+        uri: Uri?,
+        header: MutableMap<String, String>?,
+        listener: PlayerListener?
+    ) {
         //判断是否是当前播放的url
         if (uri == currentUri && mediaPlayer != null) {
             if (listener != null) {
                 this.listener = listener
+            }
+            if (isLoading) {
+                stopPlay()
+                return
             }
             if (mediaPlayer!!.isPlaying) {
                 pause()
@@ -243,8 +264,8 @@ class AudioPlayer : MediaPlayer.OnPreparedListener, MediaPlayer.OnErrorListener,
                 resume()
             }
         } else {
-            pause() //先停下来，有些手机会报文件结束异常的错误
-            //先让当前url回调结束
+            pause()
+            //当列表播放，先让当前url回调结束
             this.listener?.onCompletion()
             //直接播放
             play(context, uri, header, listener)
@@ -282,7 +303,7 @@ class AudioPlayer : MediaPlayer.OnPreparedListener, MediaPlayer.OnErrorListener,
         }
         url?.let {
             this.listener = listener
-            currentUrl = url
+            this.currentUrl = url
             initMedia()
             configMediaPlayer()
         }
@@ -300,7 +321,7 @@ class AudioPlayer : MediaPlayer.OnPreparedListener, MediaPlayer.OnErrorListener,
         }
         uri?.let {
             this.listener = listener
-            currentUri = uri
+            this.currentUri = uri
             this.context = context
             this.header = header
             initMedia()
@@ -321,8 +342,8 @@ class AudioPlayer : MediaPlayer.OnPreparedListener, MediaPlayer.OnErrorListener,
         }
         url?.let {
             this.listener = listener
-            setIsPlay(false)
-            currentUrl = url
+            this.setIsPlay(false)
+            this.currentUrl = url
             initMedia()
             configMediaPlayer()
         }
@@ -339,8 +360,8 @@ class AudioPlayer : MediaPlayer.OnPreparedListener, MediaPlayer.OnErrorListener,
         }
         uri?.let {
             this.listener = listener
-            setIsPlay(false)
-            currentUri = uri
+            this.setIsPlay(false)
+            this.currentUri = uri
             this.context = context
             this.header = header
             initMedia()
@@ -349,12 +370,32 @@ class AudioPlayer : MediaPlayer.OnPreparedListener, MediaPlayer.OnErrorListener,
     }
 
 
+    private fun loading() {
+        isLoading = true
+        handler.sendEmptyMessage(HANDLER_LOADING)
+    }
+
+    private fun start(mp: MediaPlayer) {
+        if (seekToPlay != 0) {
+            mp.seekTo(seekToPlay)
+            seekToPlay = 0
+        }
+        isLoading = false
+        if (!isPlay.get()) {
+            setIsPlay(true)
+            return
+        }
+        mp.start()
+        handler.sendEmptyMessage(HANDLER_START)
+        startProgress()
+    }
+
     /**
      * 暂停，并且停止计时
      */
     fun pause() {
         if (mediaPlayer != null && mediaPlayer!!.isPlaying
-            && (!TextUtils.isEmpty(currentUrl)||currentUri != null)
+            && (!TextUtils.isEmpty(currentUrl) || currentUri != null)
         ) {
             stopProgress()
             mediaPlayer!!.pause()
@@ -366,7 +407,7 @@ class AudioPlayer : MediaPlayer.OnPreparedListener, MediaPlayer.OnErrorListener,
      * 恢复，并且开始计时
      */
     fun resume() {
-        if (isPause && (!TextUtils.isEmpty(currentUrl)||currentUri != null)) {
+        if (isPause && (!TextUtils.isEmpty(currentUrl) || currentUri != null)) {
             mediaPlayer!!.start()
             if (seekToPlay != 0) {
                 mediaPlayer!!.seekTo(seekToPlay)
@@ -395,7 +436,7 @@ class AudioPlayer : MediaPlayer.OnPreparedListener, MediaPlayer.OnErrorListener,
      * 外部设置进度变化
      */
     fun seekTo(seekTo: Int) {
-        if (mediaPlayer != null && (!TextUtils.isEmpty(currentUrl)||currentUri != null)) {
+        if (mediaPlayer != null && (!TextUtils.isEmpty(currentUrl) || currentUri != null)) {
             setIsPlay(!isPause)
             mediaPlayer!!.start()
             mediaPlayer!!.seekTo(seekTo)
@@ -450,6 +491,7 @@ class AudioPlayer : MediaPlayer.OnPreparedListener, MediaPlayer.OnErrorListener,
             mediaPlayer!!.setOnCompletionListener(this)
             mediaPlayer!!.setOnSeekCompleteListener(this)
             mediaPlayer!!.isLooping = isLoop
+            loading()
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -494,18 +536,9 @@ class AudioPlayer : MediaPlayer.OnPreparedListener, MediaPlayer.OnErrorListener,
     }
 
     override fun onPrepared(mp: MediaPlayer) {
-        if (seekToPlay != 0) {
-            mp.seekTo(seekToPlay)
-            seekToPlay = 0
-        }
-        if (!isPlay.get()) {
-            setIsPlay(true)
-            return
-        }
-        mp.start()
-        handler.sendEmptyMessage(HANDLER_START)
-        startProgress()
+        start(mp)
     }
+
 
     override fun onError(mp: MediaPlayer, what: Int, extra: Int): Boolean {
         val message = Message.obtain()

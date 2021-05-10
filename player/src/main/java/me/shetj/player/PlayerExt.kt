@@ -9,6 +9,7 @@ import android.widget.SeekBar
  */
 fun AudioPlayer.playNoStart(
     url: String,
+    onLoading:() -> Unit = {},
     onStart: (duration: Int) -> Unit = {_: Int -> },
     onPause: () -> Unit = {},
     onResume: () -> Unit = {},
@@ -19,6 +20,10 @@ fun AudioPlayer.playNoStart(
 ): AudioPlayer {
 
     playNoStart(url, object : PlayerListener {
+        override fun onLoading() {
+            onLoading()
+        }
+
         override fun onStart(duration: Int) {
             onStart(duration)
         }
@@ -56,6 +61,7 @@ fun AudioPlayer.playNoStart(
  */
 fun AudioPlayer.playOrPause(
     url: String,
+    onLoading:() -> Unit = {},
     onStart: ( duration: Int) -> Unit = {  _: Int -> },
     onPause: () -> Unit = {},
     onResume: () -> Unit = {},
@@ -66,6 +72,10 @@ fun AudioPlayer.playOrPause(
 ): AudioPlayer {
 
     playOrPause(url, object : PlayerListener {
+        override fun onLoading() {
+            onLoading()
+        }
+
         override fun onStart(duration: Int) {
             onStart(duration)
         }
@@ -120,6 +130,7 @@ fun AudioPlayer.setSeekBar(seekBar: SeekBar?) {
  * 如果需要替换全部 [AudioPlayer.updateListener(listener: PlayerListener)]
  */
 fun AudioPlayer.updateListener(
+    onLoading:() -> Unit = {},
     onStart: (duration: Int) -> Unit = { _: Int -> },
     onPause: () -> Unit = {},
     onResume: () -> Unit = {},
@@ -129,6 +140,10 @@ fun AudioPlayer.updateListener(
     onProgress: (current: Int, duration: Int) -> Unit = { _: Int, _: Int -> }
 ): AudioPlayer {
     updateListener(object : PlayerListener {
+        override fun onLoading() {
+            onLoading()
+        }
+
         override fun onStart(duration: Int) {
             onStart( duration)
         }

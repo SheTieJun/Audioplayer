@@ -27,6 +27,9 @@ object AudioTrackPlayer {
     var isStartPlay = false
         private set
 
+    /**
+     * @param path PCM的路径
+     */
     fun setContext(context: Context, path: String) {
         mAudioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
         this.PATH = path
